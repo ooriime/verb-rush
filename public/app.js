@@ -103,7 +103,7 @@
   function rulesHTML() {
     return `
       <div class="rules">
-        <p>A phrase appears with two choices: <strong>with S</strong> or <strong>no S</strong>. Pick the right one as fast as you can.</p>
+        <p>A phrase appears with two choices: <strong class="with-s-text">S</strong> or <strong class="no-s-text">NO S</strong>. Pick the right one as fast as you can.</p>
         <div class="scoring">
           <span><strong>+2</strong> first correct</span>
           <span><strong>+1</strong> second correct</span>
@@ -470,8 +470,8 @@
       if (showAnswer) {
         const tag =
           correctAnswer === "S"
-            ? `<span class="tag s">with S</span>`
-            : `<span class="tag no-s">no S</span>`;
+            ? `<span class="tag s">S</span>`
+            : `<span class="tag no-s">NO S</span>`;
         const label = isReview ? "Expected answer:" : "Answer:";
         revealHTML = `<div class="answer-reveal">${label}${tag}</div>`;
       }
@@ -491,12 +491,8 @@
       const disabled = !!myAnswer;
       actionsHTML = `
         <div class="actions">
-          <button class="action-btn" data-answer="S" ${disabled ? "disabled" : ""}>
-            <span class="glyph">with</span>S
-          </button>
-          <button class="action-btn" data-answer="NO S" ${disabled ? "disabled" : ""}>
-            <span class="glyph">no</span>S
-          </button>
+          <button class="action-btn" data-answer="S" ${disabled ? "disabled" : ""}>S</button>
+          <button class="action-btn" data-answer="NO S" ${disabled ? "disabled" : ""}>NO S</button>
         </div>
         ${disabled ? `<div class="actions-hint">Waiting for others…</div>` : ""}
       `;
@@ -529,7 +525,7 @@
       .map((r, i) => {
         const correctCls = r.correct ? "correct" : "wrong";
         const answerType = r.answer === "S" ? "with-s" : "no-s";
-        const answerLabel = r.answer === "S" ? "with S" : "no S";
+        const answerLabel = r.answer === "S" ? "S" : "NO S";
         const elapsed = formatTime(r.elapsed);
 
         let actionCell;
@@ -732,7 +728,7 @@
             </div>
             <div class="modal-role">
               <span class="modal-role-tag player">Player</span>
-              <span class="modal-role-text">Up to 4 seats. Each player answers <strong>"with S"</strong> or <strong>"no S"</strong> for each phrase. The game can start with at least one player.</span>
+              <span class="modal-role-text">Up to 4 seats. Each player answers <strong class="with-s-text">S</strong> or <strong class="no-s-text">NO S</strong> for each phrase. The game can start with at least one player.</span>
             </div>
             <div class="modal-role">
               <span class="modal-role-tag spectator">Spectator</span>
@@ -747,7 +743,7 @@
             <li>The referee clicks <strong>Reveal phrase</strong>.</li>
             <li>Countdown 3 → 2 → 1.</li>
             <li>The phrase appears with two highlighted choices (e.g. "He <em>play / plays</em> football").</li>
-            <li>Each player clicks as fast as possible on <strong>with S</strong> or <strong>no S</strong>.</li>
+            <li>Each player clicks as fast as possible on <strong class="with-s-text">S</strong> or <strong class="no-s-text">NO S</strong>.</li>
             <li>Once everyone has answered, the referee reviews each answer with its <strong>response time</strong>, can override the auto-judgment if needed, and confirms.</li>
             <li>Scores are applied. The referee moves to the next card.</li>
           </ol>

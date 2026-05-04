@@ -721,18 +721,22 @@ label {
   margin-left: 6px;
 }
 
+.answer-reveal .tag {
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  padding: 4px 12px;
+  border-radius: 6px;
+  margin-left: 6px;
+}
+
 .answer-reveal .tag.s {
   color: var(--with-s);
   background: var(--with-s-soft);
-  padding: 3px 10px;
-  border-radius: 6px;
 }
 
 .answer-reveal .tag.no-s {
   color: var(--no-s);
   background: var(--no-s-soft);
-  padding: 3px 10px;
-  border-radius: 6px;
 }
 
 /* ---------- Action buttons (S / NO S) ---------- */
@@ -747,15 +751,16 @@ label {
 
 .action-btn {
   flex: 1;
-  padding: 28px 20px;
-  font-size: 22px;
-  font-weight: 600;
+  padding: 36px 20px;
+  font-size: 42px;
+  font-weight: 700;
   border-radius: 14px;
   border: 2px solid;
   cursor: pointer;
   background: var(--surface);
   transition: background 0.15s ease, color 0.15s ease, transform 0.05s ease;
-  letter-spacing: 0.02em;
+  letter-spacing: 0.06em;
+  font-family: inherit;
 }
 
 .action-btn[data-answer="S"] {
@@ -780,12 +785,14 @@ label {
   color: var(--bg);
 }
 
-.action-btn .glyph {
-  font-family: "Fraunces", Georgia, serif;
-  font-style: italic;
-  font-size: 28px;
-  margin-right: 6px;
-  font-weight: 500;
+.with-s-text {
+  color: var(--with-s);
+  font-weight: 700;
+}
+
+.no-s-text {
+  color: var(--no-s);
+  font-weight: 700;
 }
 
 .action-btn:active:not(:disabled) {
@@ -896,11 +903,13 @@ label {
 .answer-pill {
   display: inline-flex;
   align-items: center;
-  padding: 3px 9px;
+  padding: 3px 10px;
   border-radius: 6px;
-  font-weight: 600;
+  font-weight: 700;
   font-size: 13px;
-  letter-spacing: 0.01em;
+  letter-spacing: 0.05em;
+  min-width: 36px;
+  justify-content: center;
 }
 
 .answer-pill.with-s {
