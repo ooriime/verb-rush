@@ -70,8 +70,25 @@ function createInitialState() {
     numCards: 20,
     roundAnswers: [],
     roundDeltas: [0, 0, 0, 0],
+    roundStartTime: null,
     countdown: null,
   };
+}
+
+function computeDeltas(state) {
+  const correctAnswers = state.roundAnswers
+    .filter((a) => a.correct)
+    .sort((a, b) => a.time - b.time);
+  const wrongAnswers = state.roundAnswers.filter((a) => !a.correct);
+  const deltas = [0, 0, 0, 0];
+  correctAnswers.forEach((a, i) => {
+    if (i === 0) deltas[a.slot] = 2;
+    else if (i === 1) deltas[a.slot] = 1;
+  });
+  wrongAnswers.forEach((a) => {
+    deltas[a.slot] = -1;
+  });
+  return deltas;
 }
 
 function isReferee(socketId) {
@@ -195,6 +212,7 @@ io.on("connection", (socket) => {
         state.status = "playing";
         state.roundAnswers = [];
         state.roundDeltas = [0, 0, 0, 0];
+        state.roundStartTime = Date.now();
         broadcast();
       } else {
         state.countdown = c;
@@ -209,32 +227,43 @@ io.on("connection", (socket) => {
     if (!player) return;
     if (answer !== "S" && answer !== "NO S") return;
     if (state.roundAnswers.find((a) => a.playerId === socket.id)) return;
+    const now = Date.now();
     state.roundAnswers.push({
       playerId: socket.id,
       slot: player.slot,
       answer,
-      time: Date.now(),
+      time: now,
+      elapsed: state.roundStartTime ? now - state.roundStartTime : 0,
+      correct: null,
     });
     if (state.roundAnswers.length === state.players.length) {
       const correctAnswer = state.cards[state.cardIndex].answer;
-      const correct = state.roundAnswers
-        .filter((a) => a.answer === correctAnswer)
-        .sort((a, b) => a.time - b.time);
-      const wrong = state.roundAnswers.filter((a) => a.answer !== correctAnswer);
-      const deltas = [0, 0, 0, 0];
-      correct.forEach((a, i) => {
-        if (i === 0) deltas[a.slot] = 2;
-        else if (i === 1) deltas[a.slot] = 1;
+      state.roundAnswers.forEach((a) => {
+        a.correct = a.answer === correctAnswer;
       });
-      wrong.forEach((a) => {
-        deltas[a.slot] = -1;
-      });
-      state.players.forEach((p) => {
-        p.score += deltas[p.slot];
-      });
-      state.roundDeltas = deltas;
-      state.status = "result";
+      state.status = "review";
     }
+    broadcast();
+  });
+
+  socket.on("toggleAnswer", (playerId) => {
+    if (!isReferee(socket.id)) return;
+    if (state.status !== "review") return;
+    const ans = state.roundAnswers.find((a) => a.playerId === playerId);
+    if (!ans) return;
+    ans.correct = !ans.correct;
+    broadcast();
+  });
+
+  socket.on("confirmReview", () => {
+    if (!isReferee(socket.id)) return;
+    if (state.status !== "review") return;
+    const deltas = computeDeltas(state);
+    state.players.forEach((p) => {
+      p.score += deltas[p.slot];
+    });
+    state.roundDeltas = deltas;
+    state.status = "result";
     broadcast();
   });
 
@@ -248,6 +277,7 @@ io.on("connection", (socket) => {
       state.status = "waiting";
       state.roundAnswers = [];
       state.roundDeltas = [0, 0, 0, 0];
+      state.roundStartTime = null;
     }
     broadcast();
   });

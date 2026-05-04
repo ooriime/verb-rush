@@ -56,6 +56,11 @@
     return n + "th";
   }
 
+  function formatTime(ms) {
+    if (typeof ms !== "number" || ms < 0) return "—";
+    return (ms / 1000).toFixed(2) + "s";
+  }
+
   function formatPhrase(phrase) {
     const parts = phrase.split(/(\w+\/\w+)/);
     return parts
@@ -348,8 +353,7 @@
     if (players.length === 0) return "";
 
     const showResult = state.status === "result";
-    const correctAnswer =
-      state.cards[state.cardIndex] && state.cards[state.cardIndex].answer;
+    const showJudgment = state.status === "review" || state.status === "result";
 
     const { sorted, ranks } = computeRanks(players);
 
@@ -363,8 +367,8 @@
       const isMe = player.id === myId;
       const answered = state.roundAnswers.find((a) => a.playerId === player.id);
       let extraClass = "";
-      if (showResult && answered) {
-        extraClass = answered.answer === correctAnswer ? "correct" : "wrong";
+      if (showJudgment && answered) {
+        extraClass = answered.correct ? "correct" : "wrong";
       }
 
       const rank = ranks.get(player.id);
@@ -386,10 +390,12 @@
         deltaHTML = `<div class="score-delta ${cls}">${sign}</div>`;
       }
 
-      const answeredHTML =
-        state.status === "playing" && answered
-          ? `<div class="score-answered">Answered</div>`
-          : "";
+      let bottomHTML = "";
+      if (state.status === "playing" && answered) {
+        bottomHTML = `<div class="score-answered">Answered · ${formatTime(answered.elapsed)}</div>`;
+      } else if (showJudgment && answered) {
+        bottomHTML = `<div class="score-answered">${formatTime(answered.elapsed)}</div>`;
+      }
 
       return `
         <div class="score-card${leaderClass} ${isMe ? "me" : ""} ${extraClass}" style="--score-color:${player.color}">
@@ -400,7 +406,7 @@
           <div class="score-name">${escapeHtml(player.name)}${isMe ? " · you" : ""}</div>
           <div class="score-num">${player.score}</div>
           ${deltaHTML}
-          ${answeredHTML}
+          ${bottomHTML}
         </div>
       `;
     });
@@ -414,7 +420,9 @@
     const phase = state.status;
     const card = state.cards[state.cardIndex];
     const correctAnswer = card ? card.answer : null;
-    const showResult = phase === "result";
+    const isReview = phase === "review";
+    const isResult = phase === "result";
+    const showAnswer = isReview || isResult;
     const isReferee = role === "referee";
     const isPlayer = role === "player";
     const player = mePlayer();
@@ -436,18 +444,19 @@
       `;
     } else if (phase === "countdown") {
       stageContent = `<div class="countdown">${state.countdown}</div>`;
-    } else if (phase === "playing" || phase === "result") {
-      if (showResult) {
+    } else {
+      if (isResult) {
         stageClass = correctAnswer === "S" ? "correct-glow" : "wrong-glow";
       }
       const phraseHTML = card ? formatPhrase(card.phrase) : "";
       let revealHTML = "";
-      if (showResult) {
+      if (showAnswer) {
         const tag =
           correctAnswer === "S"
             ? `<span class="tag s">with S</span>`
             : `<span class="tag no-s">no S</span>`;
-        revealHTML = `<div class="answer-reveal">Answer:${tag}</div>`;
+        const label = isReview ? "Expected answer:" : "Answer:";
+        revealHTML = `<div class="answer-reveal">${label}${tag}</div>`;
       }
       stageContent = `
         <div class="phrase">${phraseHTML}</div>
@@ -476,47 +485,9 @@
       `;
     }
 
-    let nextHTML = "";
-    if (showResult) {
-      const ranking = [...state.roundAnswers]
-        .map((a) => {
-          const p = state.players.find((pp) => pp.slot === a.slot);
-          return { ...a, name: p ? p.name : "—", color: p ? p.color : "#888" };
-        })
-        .sort((x, y) => x.time - y.time);
-
-      const rows = ranking
-        .map((r, i) => {
-          const correct = r.answer === correctAnswer;
-          const delta = state.roundDeltas[r.slot];
-          const deltaCls = delta > 0 ? "up" : delta < 0 ? "down" : "";
-          const deltaTxt = delta > 0 ? `+${delta}` : delta;
-          return `
-            <div class="rank-row" style="--rank-color:${r.color}">
-              <div class="rank-num">${i + 1}.</div>
-              <div class="rank-name">${escapeHtml(r.name)}</div>
-              <div class="rank-answer ${correct ? "correct" : "wrong"}">${
-            r.answer === "S" ? "with S" : "no S"
-          } ${correct ? "✓" : "✗"}</div>
-              <div class="rank-delta ${deltaCls}">${deltaTxt}</div>
-            </div>
-          `;
-        })
-        .join("");
-
-      const isLast = state.cardIndex + 1 >= state.cards.length;
-      nextHTML = `
-        <div class="ranking">${rows}</div>
-        ${
-          isReferee
-            ? `<button id="next-btn">${isLast ? "See results" : "Next card"}</button>`
-            : `<div class="actions-hint">${
-                isLast
-                  ? "The referee will show the results…"
-                  : "The referee will move on…"
-              }</div>`
-        }
-      `;
+    let panelHTML = "";
+    if (isReview || isResult) {
+      panelHTML = roundPanelHTML({ isReview, isResult, isReferee, correctAnswer });
     }
 
     return `
@@ -525,7 +496,93 @@
       ${counter}
       <div class="stage ${stageClass}">${stageContent}</div>
       ${actionsHTML}
-      ${nextHTML}
+      ${panelHTML}
+    `;
+  }
+
+  function roundPanelHTML({ isReview, isResult, isReferee, correctAnswer }) {
+    const ranking = [...state.roundAnswers]
+      .map((a) => {
+        const p = state.players.find((pp) => pp.slot === a.slot);
+        return { ...a, name: p ? p.name : "—", color: p ? p.color : "#888" };
+      })
+      .sort((x, y) => x.time - y.time);
+
+    const rows = ranking
+      .map((r, i) => {
+        const correctCls = r.correct ? "correct" : "wrong";
+        const answerLabel = r.answer === "S" ? "with S" : "no S";
+        const elapsed = formatTime(r.elapsed);
+
+        let actionCell;
+        if (isReview && isReferee) {
+          actionCell = `
+            <div class="validate-toggle">
+              <button class="validate-btn ok ${r.correct ? "active" : ""}" data-toggle="${r.playerId}" data-want="correct">
+                <span class="vmark">✓</span> Correct
+              </button>
+              <button class="validate-btn ko ${!r.correct ? "active" : ""}" data-toggle="${r.playerId}" data-want="wrong">
+                <span class="vmark">✗</span> Wrong
+              </button>
+            </div>
+          `;
+        } else if (isReview) {
+          actionCell = `<div class="rank-status ${correctCls}">${
+            r.correct ? "✓ marked correct" : "✗ marked wrong"
+          }</div>`;
+        } else {
+          const delta = state.roundDeltas[r.slot] || 0;
+          const deltaCls = delta > 0 ? "up" : delta < 0 ? "down" : "zero";
+          const deltaTxt = delta > 0 ? `+${delta}` : delta;
+          actionCell = `<div class="rank-delta-big ${deltaCls}">${deltaTxt}</div>`;
+        }
+
+        return `
+          <div class="rank-row ${isReview ? "review" : "result"}" style="--rank-color:${r.color}">
+            <div class="rank-num">${i + 1}.</div>
+            <div class="rank-name">${escapeHtml(r.name)}</div>
+            <div class="rank-answer ${correctCls}">
+              ${answerLabel}
+              <span class="rank-mark">${r.correct ? "✓" : "✗"}</span>
+            </div>
+            <div class="rank-time">${elapsed}</div>
+            ${actionCell}
+          </div>
+        `;
+      })
+      .join("");
+
+    let header;
+    if (isReview) {
+      header = isReferee
+        ? `<div class="panel-title">Validate the answers</div>
+           <div class="panel-sub">Tap a button to mark each answer. Default is based on the expected answer.</div>`
+        : `<div class="panel-title">Awaiting validation</div>
+           <div class="panel-sub">The referee is reviewing the answers…</div>`;
+    } else {
+      header = `<div class="panel-title">Round results</div>`;
+    }
+
+    let footer = "";
+    if (isReview) {
+      footer = isReferee
+        ? `<button id="confirm-btn" class="confirm-btn">Confirm and apply scores</button>`
+        : "";
+    } else {
+      const isLast = state.cardIndex + 1 >= state.cards.length;
+      footer = isReferee
+        ? `<button id="next-btn">${isLast ? "See final results" : "Next card"}</button>`
+        : `<div class="actions-hint">${
+            isLast ? "The referee will show the results…" : "The referee will move on…"
+          }</div>`;
+    }
+
+    return `
+      <div class="round-panel ${isReview ? "review-panel" : "result-panel"}">
+        ${header}
+        <div class="rank-table">${rows}</div>
+        ${footer}
+      </div>
     `;
   }
 
@@ -547,6 +604,19 @@
         socket.emit("answer", answer);
       });
     });
+
+    document.querySelectorAll(".validate-btn[data-toggle]").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        if (btn.classList.contains("active")) return;
+        const playerId = btn.getAttribute("data-toggle");
+        socket.emit("toggleAnswer", playerId);
+      });
+    });
+
+    const confirmBtn = document.getElementById("confirm-btn");
+    if (confirmBtn) {
+      confirmBtn.addEventListener("click", () => socket.emit("confirmReview"));
+    }
 
     const nextBtn = document.getElementById("next-btn");
     if (nextBtn) {
@@ -660,9 +730,19 @@
             <li>Countdown 3 → 2 → 1.</li>
             <li>The phrase appears with two highlighted choices (e.g. "He <em>play / plays</em> football").</li>
             <li>Each player clicks as fast as possible on <strong>with S</strong> or <strong>no S</strong>.</li>
-            <li>Once all players have answered, the correct answer and round ranking appear.</li>
-            <li>The referee moves to the next card.</li>
+            <li>Once everyone has answered, the referee reviews each answer with its <strong>response time</strong>, can override the auto-judgment if needed, and confirms.</li>
+            <li>Scores are applied. The referee moves to the next card.</li>
           </ol>
+        </div>
+
+        <div class="modal-section">
+          <h3>Referee validation</h3>
+          <p>
+            After all players answer, the referee enters a review step. Each
+            answer is pre-marked correct or wrong based on the expected answer,
+            but the referee can flip any verdict (useful for typos, contested
+            answers, or special cases) before applying scores.
+          </p>
         </div>
 
         <div class="modal-section">
