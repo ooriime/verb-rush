@@ -49,6 +49,13 @@
     });
   }
 
+  function ordinal(n) {
+    if (n === 1) return "1st";
+    if (n === 2) return "2nd";
+    if (n === 3) return "3rd";
+    return n + "th";
+  }
+
   function formatPhrase(phrase) {
     const parts = phrase.split(/(\w+\/\w+)/);
     return parts
@@ -74,11 +81,11 @@
   function rulesHTML() {
     return `
       <div class="rules">
-        <p>Une phrase apparaît avec deux choix : avec <strong>S</strong> ou sans. Choisis le bon, le plus vite possible.</p>
+        <p>A phrase appears with two choices: <strong>with S</strong> or <strong>no S</strong>. Pick the right one as fast as you can.</p>
         <div class="scoring">
-          <span><strong>+2</strong> au 1<sup>er</sup> bon</span>
-          <span><strong>+1</strong> au 2<sup>ème</sup> bon</span>
-          <span><strong>−1</strong> par mauvaise réponse</span>
+          <span><strong>+2</strong> first correct</span>
+          <span><strong>+1</strong> second correct</span>
+          <span><strong>−1</strong> wrong answer</span>
         </div>
       </div>
     `;
@@ -90,8 +97,8 @@
     const isMe = state.referee.id === myId;
     return `
       <div class="referee-badge ${isMe ? "me" : ""}">
-        <span class="referee-tag">Arbitre</span>
-        <span class="referee-name">${name}${isMe ? " · toi" : ""}</span>
+        <span class="referee-tag">Referee</span>
+        <span class="referee-name">${name}${isMe ? " · you" : ""}</span>
       </div>
     `;
   }
@@ -106,14 +113,14 @@
           <div class="slot filled ${isMe ? "me" : ""}" style="--slot-color:${player.color}">
             <div class="slot-dot"></div>
             <div class="slot-name">${escapeHtml(player.name)}</div>
-            ${isMe ? `<div class="slot-tag">Toi</div>` : ""}
+            ${isMe ? `<div class="slot-tag">You</div>` : ""}
           </div>
         `);
       } else {
         slots.push(`
           <div class="slot empty">
             <div class="slot-dot"></div>
-            <div class="slot-name">En attente…</div>
+            <div class="slot-name">Waiting…</div>
           </div>
         `);
       }
@@ -126,17 +133,17 @@
       const isMe = state.referee.id === myId;
       return `
         <div class="ref-slot filled ${isMe ? "me" : ""}">
-          <div class="ref-slot-tag">Arbitre</div>
+          <div class="ref-slot-tag">Referee</div>
           <div class="ref-slot-name">${escapeHtml(state.referee.name)}${
-        isMe ? " · toi" : ""
+        isMe ? " · you" : ""
       }</div>
         </div>
       `;
     }
     return `
       <div class="ref-slot empty">
-        <div class="ref-slot-tag">Arbitre</div>
-        <div class="ref-slot-name">Aucun arbitre — la partie ne peut pas démarrer</div>
+        <div class="ref-slot-tag">Referee</div>
+        <div class="ref-slot-name">No referee — game can't start</div>
       </div>
     `;
   }
@@ -153,13 +160,11 @@
 
     let formBlock;
     if (!canJoinPlayer && !canJoinReferee) {
-      const reason = inProgress
-        ? "Une partie est en cours."
-        : "La partie est complète.";
+      const reason = inProgress ? "A game is in progress." : "The game is full.";
       formBlock = `
         <div class="notice">
-          <span class="spectator-tag">Spectateur</span>
-          <div>${reason} Tu peux suivre la partie en direct.</div>
+          <span class="spectator-tag">Spectator</span>
+          <div>${reason} You can watch live.</div>
         </div>
       `;
     } else {
@@ -168,7 +173,7 @@
           <input
             type="text"
             id="name-input"
-            placeholder="Ton prénom"
+            placeholder="Your name"
             value="${escapeHtml(pendingName)}"
             maxlength="20"
             autocomplete="off"
@@ -176,13 +181,13 @@
           />
           <div class="role-buttons">
             <button id="join-player-btn" ${canJoinPlayer ? "" : "disabled"}>
-              Rejoindre comme joueur
-              <span class="btn-sub">${state.players.length} / 4 sièges</span>
+              Join as player
+              <span class="btn-sub">${state.players.length} / 4 seats</span>
             </button>
             <button id="join-referee-btn" class="ghost" ${canJoinReferee ? "" : "disabled"}>
-              Devenir l'arbitre
+              Join as referee
               <span class="btn-sub">${
-                refereeTaken ? "déjà pris" : "pilote la partie"
+                refereeTaken ? "already taken" : "controls the game"
               }</span>
             </button>
           </div>
@@ -194,9 +199,9 @@
       ${brandHTML()}
       <div class="panel">
         ${rulesHTML()}
-        <div class="section-title">Joueurs (${state.players.length} / 4)</div>
+        <div class="section-title">Players (${state.players.length} / 4)</div>
         ${slotsHTML()}
-        <div class="section-title" style="margin-top:18px">Arbitrage</div>
+        <div class="section-title" style="margin-top:18px">Referee</div>
         ${refereeSlotHTML()}
         ${formBlock}
       </div>
@@ -247,17 +252,19 @@
 
     let statusLine;
     if (!state.referee) {
-      statusLine = "En attente d'un arbitre…";
+      statusLine = "Waiting for a referee…";
     } else if (state.players.length === 0) {
-      statusLine = "En attente d'au moins un joueur…";
+      statusLine = "Waiting for at least one player…";
     } else if (full) {
       statusLine = isRef
-        ? "Tout le monde est là, tu peux lancer la partie."
-        : "Tout le monde est là, l'arbitre va lancer la partie.";
+        ? "Everyone's here. You can start the game."
+        : "Everyone's here. The referee will start the game.";
     } else {
+      const n = state.players.length;
+      const s = n > 1 ? "s" : "";
       statusLine = isRef
-        ? `${state.players.length} joueur${state.players.length > 1 ? "s" : ""} prêt${state.players.length > 1 ? "s" : ""} — tu peux lancer dès maintenant ou attendre les autres.`
-        : `${state.players.length} joueur${state.players.length > 1 ? "s" : ""} connecté${state.players.length > 1 ? "s" : ""} — l'arbitre peut lancer la partie quand il veut.`;
+        ? `${n} player${s} ready — you can start now or wait for more.`
+        : `${n} player${s} connected — the referee can start whenever.`;
     }
 
     let actions;
@@ -265,7 +272,7 @@
       actions = `
         <div class="lobby-actions">
           <div class="config">
-            <label for="num-cards">Cartes</label>
+            <label for="num-cards">Cards</label>
             <select id="num-cards">
               <option value="10" ${numCardsChoice === 10 ? "selected" : ""}>10</option>
               <option value="20" ${numCardsChoice === 20 ? "selected" : ""}>20</option>
@@ -274,15 +281,15 @@
             </select>
           </div>
           <div class="grow"></div>
-          <button class="ghost" id="leave-btn">Quitter le rôle</button>
-          <button id="start-btn" ${ready ? "" : "disabled"}>Lancer la partie</button>
+          <button class="ghost" id="leave-btn">Leave role</button>
+          <button id="start-btn" ${ready ? "" : "disabled"}>Start game</button>
         </div>
       `;
     } else {
       actions = `
         <div class="lobby-actions">
           <div class="grow"></div>
-          <button class="ghost" id="leave-btn">Quitter</button>
+          <button class="ghost" id="leave-btn">Leave</button>
         </div>
       `;
     }
@@ -291,9 +298,9 @@
       ${brandHTML()}
       <div class="panel">
         ${rulesHTML()}
-        <div class="section-title">Joueurs (${state.players.length} / 4)</div>
+        <div class="section-title">Players (${state.players.length} / 4)</div>
         ${slotsHTML()}
-        <div class="section-title" style="margin-top:18px">Arbitrage</div>
+        <div class="section-title" style="margin-top:18px">Referee</div>
         ${refereeSlotHTML()}
         <div class="lobby-status">${statusLine}</div>
         ${actions}
@@ -317,14 +324,42 @@
     }
   }
 
+  /* ---------- Live leaderboard ---------- */
+
+  function computeRanks(players) {
+    const sorted = [...players].sort(
+      (a, b) => b.score - a.score || a.slot - b.slot
+    );
+    const ranks = new Map();
+    let lastScore = null;
+    let rank = 0;
+    for (let i = 0; i < sorted.length; i++) {
+      if (sorted[i].score !== lastScore) {
+        rank = i + 1;
+        lastScore = sorted[i].score;
+      }
+      ranks.set(sorted[i].id, rank);
+    }
+    return { sorted, ranks };
+  }
+
   function scoreboardHTML() {
-    const players = state.players.slice().sort((a, b) => a.slot - b.slot);
-    const n = Math.max(1, players.length);
+    const players = state.players.slice();
+    if (players.length === 0) return "";
+
+    const showResult = state.status === "result";
     const correctAnswer =
       state.cards[state.cardIndex] && state.cards[state.cardIndex].answer;
-    const showResult = state.status === "result";
 
-    const cards = players.map((player) => {
+    const { sorted, ranks } = computeRanks(players);
+
+    const previousPlayers = players.map((p) => ({
+      ...p,
+      score: showResult ? p.score - (state.roundDeltas[p.slot] || 0) : p.score,
+    }));
+    const { ranks: prevRanks } = computeRanks(previousPlayers);
+
+    const cards = sorted.map((player) => {
       const isMe = player.id === myId;
       const answered = state.roundAnswers.find((a) => a.playerId === player.id);
       let extraClass = "";
@@ -332,22 +367,37 @@
         extraClass = answered.answer === correctAnswer ? "correct" : "wrong";
       }
 
+      const rank = ranks.get(player.id);
+      const prevRank = prevRanks.get(player.id);
+      const rankDelta = prevRank - rank;
+      let arrow = "";
+      if (showResult && rankDelta > 0) {
+        arrow = `<span class="rank-arrow up">↑</span>`;
+      } else if (showResult && rankDelta < 0) {
+        arrow = `<span class="rank-arrow down">↓</span>`;
+      }
+      const leaderClass = rank === 1 ? " leader" : "";
+
       const delta = state.roundDeltas[player.slot] || 0;
       let deltaHTML = "";
-      if (showResult) {
-        const cls = delta > 0 ? "up" : delta < 0 ? "down" : "zero";
+      if (showResult && delta !== 0) {
+        const cls = delta > 0 ? "up" : "down";
         const sign = delta > 0 ? `+${delta}` : delta;
         deltaHTML = `<div class="score-delta ${cls}">${sign}</div>`;
       }
 
       const answeredHTML =
         state.status === "playing" && answered
-          ? `<div class="score-answered">A répondu</div>`
+          ? `<div class="score-answered">Answered</div>`
           : "";
 
       return `
-        <div class="score-card ${isMe ? "me" : ""} ${extraClass}" style="--score-color:${player.color}">
-          <div class="score-name">${escapeHtml(player.name)}${isMe ? " · toi" : ""}</div>
+        <div class="score-card${leaderClass} ${isMe ? "me" : ""} ${extraClass}" style="--score-color:${player.color}">
+          <div class="rank-pill">
+            <span class="rank-num">${ordinal(rank)}</span>
+            ${arrow}
+          </div>
+          <div class="score-name">${escapeHtml(player.name)}${isMe ? " · you" : ""}</div>
           <div class="score-num">${player.score}</div>
           ${deltaHTML}
           ${answeredHTML}
@@ -355,6 +405,7 @@
       `;
     });
 
+    const n = sorted.length;
     const maxW = n * 210 + (n - 1) * 10;
     return `<div class="scoreboard" style="max-width: ${maxW}px">${cards.join("")}</div>`;
   }
@@ -375,13 +426,13 @@
 
     if (phase === "waiting") {
       let txt;
-      if (isReferee) txt = "Prêt ? Révèle la prochaine phrase.";
-      else if (isPlayer) txt = "L'arbitre va révéler la prochaine phrase…";
-      else txt = "En attente du prochain mot…";
+      if (isReferee) txt = "Ready? Reveal the next phrase.";
+      else if (isPlayer) txt = "Waiting for the referee to reveal the next phrase…";
+      else txt = "Waiting for the next phrase…";
 
       stageContent = `
         <div class="waiting-text">${txt}</div>
-        ${isReferee ? `<button id="reveal-btn">Révéler la phrase</button>` : ""}
+        ${isReferee ? `<button id="reveal-btn">Reveal phrase</button>` : ""}
       `;
     } else if (phase === "countdown") {
       stageContent = `<div class="countdown">${state.countdown}</div>`;
@@ -394,9 +445,9 @@
       if (showResult) {
         const tag =
           correctAnswer === "S"
-            ? `<span class="tag s">avec S</span>`
-            : `<span class="tag no-s">sans S</span>`;
-        revealHTML = `<div class="answer-reveal">Réponse${tag}</div>`;
+            ? `<span class="tag s">with S</span>`
+            : `<span class="tag no-s">no S</span>`;
+        revealHTML = `<div class="answer-reveal">Answer:${tag}</div>`;
       }
       stageContent = `
         <div class="phrase">${phraseHTML}</div>
@@ -406,7 +457,7 @@
 
     const counter =
       state.cards.length > 0
-        ? `<div class="card-counter">Carte ${state.cardIndex + 1} sur ${state.cards.length}</div>`
+        ? `<div class="card-counter">Card ${state.cardIndex + 1} of ${state.cards.length}</div>`
         : "";
 
     let actionsHTML = "";
@@ -415,13 +466,13 @@
       actionsHTML = `
         <div class="actions">
           <button class="action-btn" data-answer="S" ${disabled ? "disabled" : ""}>
-            <span class="glyph">avec</span>S
+            <span class="glyph">with</span>S
           </button>
           <button class="action-btn" data-answer="NO S" ${disabled ? "disabled" : ""}>
-            <span class="glyph">sans</span>S
+            <span class="glyph">no</span>S
           </button>
         </div>
-        ${disabled ? `<div class="actions-hint">En attente des autres…</div>` : ""}
+        ${disabled ? `<div class="actions-hint">Waiting for others…</div>` : ""}
       `;
     }
 
@@ -445,7 +496,7 @@
               <div class="rank-num">${i + 1}.</div>
               <div class="rank-name">${escapeHtml(r.name)}</div>
               <div class="rank-answer ${correct ? "correct" : "wrong"}">${
-            r.answer === "S" ? "avec S" : "sans S"
+            r.answer === "S" ? "with S" : "no S"
           } ${correct ? "✓" : "✗"}</div>
               <div class="rank-delta ${deltaCls}">${deltaTxt}</div>
             </div>
@@ -458,13 +509,11 @@
         <div class="ranking">${rows}</div>
         ${
           isReferee
-            ? `<button id="next-btn">${
-                isLast ? "Voir les résultats" : "Carte suivante"
-              }</button>`
+            ? `<button id="next-btn">${isLast ? "See results" : "Next card"}</button>`
             : `<div class="actions-hint">${
                 isLast
-                  ? "L'arbitre va afficher les résultats…"
-                  : "L'arbitre passe à la suivante…"
+                  ? "The referee will show the results…"
+                  : "The referee will move on…"
               }</div>`
         }
       `;
@@ -513,7 +562,7 @@
         const isFirst = i === 0;
         return `
           <div class="podium-row ${isFirst ? "first" : ""}" style="--row-color:${p.color}">
-            <div class="podium-rank">${i + 1}.</div>
+            <div class="podium-rank">${ordinal(i + 1)}</div>
             <div class="podium-name">${escapeHtml(p.name)}</div>
             <div class="podium-score">${p.score} <span style="font-size:14px;color:var(--muted);font-style:italic">pts</span></div>
           </div>
@@ -525,13 +574,13 @@
       ${brandHTML()}
       <div class="panel panel-wide">
         ${refereeBadgeHTML()}
-        <div class="section-title" style="text-align:center">Partie terminée</div>
+        <div class="section-title" style="text-align:center">Game over</div>
         <div class="podium">${rows}</div>
         <div class="gameover-actions">
           ${
             role === "referee"
-              ? `<button id="reset-btn">Nouvelle partie</button>`
-              : `<div class="actions-hint">L'arbitre peut relancer une partie.</div>`
+              ? `<button id="reset-btn">New game</button>`
+              : `<div class="actions-hint">The referee can start a new game.</div>`
           }
         </div>
       </div>
@@ -545,7 +594,7 @@
 
   function render() {
     if (!state) {
-      app.innerHTML = `<div class="loading">Connexion…</div>`;
+      app.innerHTML = `<div class="loading">Connecting…</div>`;
       return;
     }
 
@@ -574,75 +623,85 @@
   function rulesModalHTML() {
     return `
       <div class="modal-content" role="dialog" aria-modal="true" aria-labelledby="rules-title">
-        <button class="modal-close" id="rules-modal-close" aria-label="Fermer">×</button>
+        <button class="modal-close" id="rules-modal-close" aria-label="Close">×</button>
         <h2 class="modal-title" id="rules-title">Verb <em>Rush</em></h2>
-        <p class="modal-lead">Règles du jeu</p>
+        <p class="modal-lead">Game rules</p>
 
         <div class="modal-section">
-          <h3>Le but</h3>
+          <h3>The goal</h3>
           <p>
-            Un jeu de rapidité sur la troisième personne du singulier en anglais.
-            Pour chaque phrase, devine si le verbe doit prendre un <strong>-s</strong> ou non,
-            le plus vite possible.
+            A speed game on the third person singular in English. For each phrase, decide
+            whether the verb takes an <strong>-s</strong> or not, as fast as you can.
           </p>
         </div>
 
         <div class="modal-section">
-          <h3>Les rôles</h3>
+          <h3>Roles</h3>
           <div class="modal-roles">
             <div class="modal-role">
-              <span class="modal-role-tag referee">Arbitre</span>
-              <span class="modal-role-text">Pilote la partie : il révèle les phrases et passe à la suivante. Il ne joue pas. Un seul arbitre par partie.</span>
+              <span class="modal-role-tag referee">Referee</span>
+              <span class="modal-role-text">Controls the game: reveals phrases and moves to the next. Doesn't play. One referee per game.</span>
             </div>
             <div class="modal-role">
-              <span class="modal-role-tag player">Joueur</span>
-              <span class="modal-role-text">Jusqu'à 4 sièges. Chaque joueur répond avec <strong>« avec S »</strong> ou <strong>« sans S »</strong> à chaque phrase. La partie peut démarrer dès qu'il y a au moins un joueur.</span>
+              <span class="modal-role-tag player">Player</span>
+              <span class="modal-role-text">Up to 4 seats. Each player answers <strong>"with S"</strong> or <strong>"no S"</strong> for each phrase. The game can start with at least one player.</span>
             </div>
             <div class="modal-role">
-              <span class="modal-role-tag spectator">Spectateur</span>
-              <span class="modal-role-text">Si tu arrives quand la partie est complète, tu peux suivre en direct sans participer.</span>
+              <span class="modal-role-tag spectator">Spectator</span>
+              <span class="modal-role-text">If you arrive when the game is full, you can watch live without playing.</span>
             </div>
           </div>
         </div>
 
         <div class="modal-section">
-          <h3>Une manche</h3>
+          <h3>A round</h3>
           <ol>
-            <li>L'arbitre clique sur <strong>Révéler la phrase</strong>.</li>
-            <li>Décompte 3 → 2 → 1.</li>
-            <li>La phrase apparaît avec deux choix surlignés (ex. « He <em>play / plays</em> football »).</li>
-            <li>Chaque joueur clique le plus vite possible sur <strong>avec S</strong> ou <strong>sans S</strong>.</li>
-            <li>Quand tous les joueurs ont répondu, la bonne réponse et le classement de la manche s'affichent.</li>
-            <li>L'arbitre passe à la carte suivante.</li>
+            <li>The referee clicks <strong>Reveal phrase</strong>.</li>
+            <li>Countdown 3 → 2 → 1.</li>
+            <li>The phrase appears with two highlighted choices (e.g. "He <em>play / plays</em> football").</li>
+            <li>Each player clicks as fast as possible on <strong>with S</strong> or <strong>no S</strong>.</li>
+            <li>Once all players have answered, the correct answer and round ranking appear.</li>
+            <li>The referee moves to the next card.</li>
           </ol>
         </div>
 
         <div class="modal-section">
-          <h3>Le score</h3>
+          <h3>Scoring</h3>
           <div class="scoring-grid">
             <span class="pts up">+2</span>
-            <span class="desc">au 1<sup>er</sup> joueur à donner la bonne réponse</span>
+            <span class="desc">to the 1<sup>st</sup> player to answer correctly</span>
             <span class="pts up">+1</span>
-            <span class="desc">au 2<sup>ème</sup> joueur à donner la bonne réponse</span>
+            <span class="desc">to the 2<sup>nd</sup> player to answer correctly</span>
             <span class="pts">0</span>
-            <span class="desc">au 3<sup>ème</sup> et 4<sup>ème</sup> bonne réponse</span>
+            <span class="desc">to the 3<sup>rd</sup> and 4<sup>th</sup> correct answers</span>
             <span class="pts down">−1</span>
-            <span class="desc">par mauvaise réponse, peu importe la rapidité</span>
+            <span class="desc">for any wrong answer, regardless of speed</span>
           </div>
         </div>
 
         <div class="modal-section">
-          <p class="modal-tip">
-            La rapidité paye, mais une mauvaise réponse coûte cher.
-            Si tu hésites et que deux joueurs ont déjà bien répondu, mieux vaut prendre 0 que −1.
+          <h3>Live leaderboard</h3>
+          <p>
+            The scoreboard reorders itself in real time after each round.
+            <span style="color: var(--good)">↑</span> means a player just climbed,
+            <span style="color: var(--bad)">↓</span> means they fell.
+            Watch the rankings flip — every wrong answer can drop you a spot.
           </p>
         </div>
 
         <div class="modal-section">
-          <h3>Fin de partie</h3>
+          <h3>Tip</h3>
+          <p class="modal-tip">
+            Speed pays, but a wrong answer costs. If two players have already
+            answered correctly, taking 0 is better than −1.
+          </p>
+        </div>
+
+        <div class="modal-section">
+          <h3>End of game</h3>
           <p>
-            Une partie dure le nombre de cartes choisi par l'arbitre (10, 20, 30 ou 50).
-            À la fin, le classement final s'affiche. L'arbitre peut relancer une nouvelle partie.
+            A game lasts as many cards as the referee chose (10, 20, 30, or 50).
+            At the end, the final ranking appears. The referee can start a new game.
           </p>
         </div>
       </div>

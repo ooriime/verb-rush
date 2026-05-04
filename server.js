@@ -116,35 +116,35 @@ io.on("connection", (socket) => {
 
     if (role === "referee") {
       if (state.referee) {
-        socket.emit("notice", "Un arbitre est déjà connecté.");
+        socket.emit("notice", "A referee is already connected.");
         return;
       }
       if (state.players.find((p) => p.id === socket.id)) {
-        socket.emit("notice", "Tu es déjà joueur. Quitte d'abord ton siège.");
+        socket.emit("notice", "You're already a player. Leave your seat first.");
         return;
       }
-      state.referee = { id: socket.id, name: name || "Arbitre" };
+      state.referee = { id: socket.id, name: name || "Referee" };
       broadcast();
       return;
     }
 
     if (state.referee && state.referee.id === socket.id) {
-      socket.emit("notice", "Tu es déjà arbitre. Quitte ton rôle d'abord.");
+      socket.emit("notice", "You're already the referee. Leave that role first.");
       return;
     }
     if (state.players.find((p) => p.id === socket.id)) return;
     if (state.status !== "lobby") {
-      socket.emit("notice", "Une partie est en cours, attends qu'elle se termine.");
+      socket.emit("notice", "A game is in progress. Wait until it ends.");
       return;
     }
     if (state.players.length >= MAX_PLAYERS) {
-      socket.emit("notice", "La partie est complète (4 joueurs).");
+      socket.emit("notice", "The game is full (4 players max).");
       return;
     }
     const slot = findFreeSlot();
     state.players.push({
       id: socket.id,
-      name: name || `Joueur ${slot + 1}`,
+      name: name || `Player ${slot + 1}`,
       slot,
       color: COLORS[slot],
       score: 0,
@@ -321,11 +321,11 @@ const PORT = process.env.PORT || 3000;
 server.listen(PORT, "0.0.0.0", () => {
   const ip = getLocalIp();
   console.log("");
-  console.log("  Verb Rush — serveur démarré");
+  console.log("  Verb Rush — server started");
   console.log("");
   console.log(`    Local    →  http://localhost:${PORT}`);
-  console.log(`    Réseau   →  http://${ip}:${PORT}`);
+  console.log(`    Network  →  http://${ip}:${PORT}`);
   console.log("");
-  console.log("  Partage l'URL Réseau avec tes camarades de classe.");
+  console.log("  Share the Network URL with your classmates.");
   console.log("");
 });
