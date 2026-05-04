@@ -10,6 +10,10 @@
   --highlight: #f4e9b8;
   --good: #4a7239;
   --bad: #a83a30;
+  --with-s: #2e6a8e;
+  --with-s-soft: rgba(46, 106, 142, 0.12);
+  --no-s: #bf6b3a;
+  --no-s-soft: rgba(191, 107, 58, 0.12);
   --shadow: 0 1px 2px rgba(60, 50, 30, 0.04), 0 8px 24px rgba(60, 50, 30, 0.06);
 }
 
@@ -688,6 +692,24 @@ label {
   color: var(--ink);
 }
 
+.phrase .choice .choice-half {
+  font-weight: 700;
+}
+
+.phrase .choice .choice-half.with-s {
+  color: var(--with-s);
+}
+
+.phrase .choice .choice-half.no-s {
+  color: var(--no-s);
+}
+
+.phrase .choice .choice-sep {
+  color: var(--muted);
+  margin: 0 2px;
+  font-weight: 400;
+}
+
 .answer-reveal {
   margin-top: 20px;
   font-size: 16px;
@@ -700,11 +722,17 @@ label {
 }
 
 .answer-reveal .tag.s {
-  color: var(--good);
+  color: var(--with-s);
+  background: var(--with-s-soft);
+  padding: 3px 10px;
+  border-radius: 6px;
 }
 
 .answer-reveal .tag.no-s {
-  color: var(--bad);
+  color: var(--no-s);
+  background: var(--no-s-soft);
+  padding: 3px 10px;
+  border-radius: 6px;
 }
 
 /* ---------- Action buttons (S / NO S) ---------- */
@@ -723,12 +751,33 @@ label {
   font-size: 22px;
   font-weight: 600;
   border-radius: 14px;
-  border: 1.5px solid var(--ink);
+  border: 2px solid;
   cursor: pointer;
   background: var(--surface);
-  color: var(--ink);
   transition: background 0.15s ease, color 0.15s ease, transform 0.05s ease;
   letter-spacing: 0.02em;
+}
+
+.action-btn[data-answer="S"] {
+  border-color: var(--with-s);
+  color: var(--with-s);
+  background: var(--with-s-soft);
+}
+
+.action-btn[data-answer="S"]:hover:not(:disabled) {
+  background: var(--with-s);
+  color: var(--bg);
+}
+
+.action-btn[data-answer="NO S"] {
+  border-color: var(--no-s);
+  color: var(--no-s);
+  background: var(--no-s-soft);
+}
+
+.action-btn[data-answer="NO S"]:hover:not(:disabled) {
+  background: var(--no-s);
+  color: var(--bg);
 }
 
 .action-btn .glyph {
@@ -736,11 +785,7 @@ label {
   font-style: italic;
   font-size: 28px;
   margin-right: 6px;
-}
-
-.action-btn:hover:not(:disabled) {
-  background: var(--ink);
-  color: var(--bg);
+  font-weight: 500;
 }
 
 .action-btn:active:not(:disabled) {
@@ -844,21 +889,42 @@ label {
   color: var(--ink-soft);
   display: inline-flex;
   align-items: center;
-  gap: 6px;
+  gap: 8px;
   white-space: nowrap;
 }
 
-.rank-answer.correct {
-  color: var(--good);
+.answer-pill {
+  display: inline-flex;
+  align-items: center;
+  padding: 3px 9px;
+  border-radius: 6px;
+  font-weight: 600;
+  font-size: 13px;
+  letter-spacing: 0.01em;
 }
 
-.rank-answer.wrong {
-  color: var(--bad);
+.answer-pill.with-s {
+  background: var(--with-s-soft);
+  color: var(--with-s);
+}
+
+.answer-pill.no-s {
+  background: var(--no-s-soft);
+  color: var(--no-s);
 }
 
 .rank-mark {
   font-weight: 700;
   font-size: 15px;
+  line-height: 1;
+}
+
+.rank-mark.correct {
+  color: var(--good);
+}
+
+.rank-mark.wrong {
+  color: var(--bad);
 }
 
 .rank-time {

@@ -61,13 +61,30 @@
     return (ms / 1000).toFixed(2) + "s";
   }
 
+  function endsWithS(word) {
+    return /s$/i.test(word);
+  }
+
   function formatPhrase(phrase) {
     const parts = phrase.split(/(\w+\/\w+)/);
     return parts
       .map((part) => {
         if (part.includes("/")) {
           const [a, b] = part.split("/");
-          return `<span class="choice">${escapeHtml(a)} / ${escapeHtml(b)}</span>`;
+          const aIsS = endsWithS(a);
+          const bIsS = endsWithS(b);
+          let aClass, bClass;
+          if (aIsS && !bIsS) {
+            aClass = "with-s";
+            bClass = "no-s";
+          } else if (bIsS && !aIsS) {
+            aClass = "no-s";
+            bClass = "with-s";
+          } else {
+            aClass = "no-s";
+            bClass = "with-s";
+          }
+          return `<span class="choice"><span class="choice-half ${aClass}">${escapeHtml(a)}</span><span class="choice-sep"> / </span><span class="choice-half ${bClass}">${escapeHtml(b)}</span></span>`;
         }
         return escapeHtml(part);
       })
@@ -511,6 +528,7 @@
     const rows = ranking
       .map((r, i) => {
         const correctCls = r.correct ? "correct" : "wrong";
+        const answerType = r.answer === "S" ? "with-s" : "no-s";
         const answerLabel = r.answer === "S" ? "with S" : "no S";
         const elapsed = formatTime(r.elapsed);
 
@@ -541,9 +559,9 @@
           <div class="rank-row ${isReview ? "review" : "result"}" style="--rank-color:${r.color}">
             <div class="rank-num">${i + 1}.</div>
             <div class="rank-name">${escapeHtml(r.name)}</div>
-            <div class="rank-answer ${correctCls}">
-              ${answerLabel}
-              <span class="rank-mark">${r.correct ? "✓" : "✗"}</span>
+            <div class="rank-answer">
+              <span class="answer-pill ${answerType}">${answerLabel}</span>
+              <span class="rank-mark ${correctCls}">${r.correct ? "✓" : "✗"}</span>
             </div>
             <div class="rank-time">${elapsed}</div>
             ${actionCell}
